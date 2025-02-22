@@ -18,3 +18,15 @@ To clone and set up the repository, run the following commands in your terminal:
 ```sh
 git clone https://github.com/Training-Committee-NIT-Rourkela/CES-AI.git
 pip install -r requirements.txt
+```
+
+Initialize the following keys to test and run the code locally. Please note that we're using Llama 3.2 as the LLM and the YouTube API exclusively. **DO NOT** use any other LLM/SLM for the application:
+- HuggingFace Token, and
+- YouTube API key
+
+Your .env file should look somelthing like this:
+
+```sh
+YOUTUBE_API_KEY="your_youtubeapi_key"
+HUGGINGFACEHUB_API_TOKEN="your_hf_token"
+```
