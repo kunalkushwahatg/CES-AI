@@ -5,7 +5,7 @@ The **Candidate Evaluation System (CES) portal** aims to streamline the process 
 
 ### Short-Term Goals:
 - Provide a platform where a candidate can dynamically seek feedback.  
-- Allow candidates to upload their **resume** and compare it with a **domain-specific resume**.  
+- Allow candidates to upload their **resume** and compare it with a **domain-specific job description** to get scopes of improvement and online resources for the same.  
 - Enable contributions via **Pull Requests (PRs)**.  
 
 ### How to Contribute:
