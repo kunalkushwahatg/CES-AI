@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from langchain.agents import create_react_agent, AgentExecutor
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_core.tools import Tool
-from langchain_core.tools import tool
 from langchain import hub
 from typing import List, Dict
 from googleapiclient.discovery import build
@@ -23,7 +22,7 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # paths
 PDF_PATH = "resume.pdf"
-JOB_DESCRIPTION_PDF_PATH = "JD.pdf"
+JOB_DESCRIPTION_PDF_PATH = "jd2.pdf"
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -92,7 +91,7 @@ def extract_list_from_text(text: str) -> list | None:
             logging.warning("Failed to parse list from text.")
     return None
 
-@tool
+
 def analyze_resume(combined_text: str) -> List[Dict[str, str]]:
     """
     Analyze a resume against a job description and return 3 technical improvement areas.
@@ -142,7 +141,7 @@ Ensure the JSON structure exactly matches the format below:
 
 
 
-@tool
+
 def search_youtube_videos(queries: List[str]) -> Dict[str, List[str]]:
     """
     Search YouTube for videos related to the given queries and return links to relevant videos.
@@ -190,7 +189,7 @@ def create_tools(combined_text: str) -> list:
         ),
         Tool(
             name="search_youtube_videos",
-            func=lambda queries: search_youtube_videos({"queries": extract_list_from_text(queries)}),
+            func=lambda queries: search_youtube_videos(extract_list_from_text(queries)),
             description="Search YouTube for videos related to the improvement areas.",
         ),
     ]
@@ -209,7 +208,7 @@ def main():
         prompt_template = hub.pull("hwchase17/react")
 
         react_agent = create_react_agent(llm=llama_llm, tools=tools, prompt=prompt_template)
-        agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=False, return_intermediate_steps=True)
+        agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True, return_intermediate_steps=True)
 
         query = (
             "You are an AI assistant that evaluates resumes based on job descriptions. "
