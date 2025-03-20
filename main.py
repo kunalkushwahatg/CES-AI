@@ -47,6 +47,14 @@ youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 #load react template from langchain hub
 prompt_template = hub.pull("hwchase17/react")
 
+#query for the react agent
+query = (
+                "You are an AI assistant that evaluates resumes based on job descriptions. "
+                "Use the analyze_resume tool to analyze the combined resume and job description text, "
+                "and search YouTube for relevant resources using the search_youtube_videos tool. "
+                "Provide short descriptions of the improvement areas as the final answer."
+            )
+
 def extract_json_from_text(text: str) -> Dict:
     """Extract and parse JSON from a text string safely."""
     try:
@@ -210,14 +218,7 @@ def analyze():
             tools = create_tools(combined_text)
 
             react_agent = create_react_agent(llm=llama_llm, tools=tools, prompt=prompt_template)
-            agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True, return_intermediate_steps=True)
-
-            query = (
-                "You are an AI assistant that evaluates resumes based on job descriptions. "
-                "Use the analyze_resume tool to analyze the combined resume and job description text, "
-                "and search YouTube for relevant resources using the search_youtube_videos tool. "
-                "Provide short descriptions of the improvement areas as the final answer."
-            )
+            agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True, return_intermediate_steps=True)            
 
             response = agent_executor.invoke({"input": query})
             intermediate_steps = response["intermediate_steps"]
