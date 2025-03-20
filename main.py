@@ -15,13 +15,14 @@ from googleapiclient.errors import HttpError
 
 
 
+
 # Load environment variables
 load_dotenv()
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # paths
-PDF_PATH = "resume.pdf"
+PDF_PATH = "kunal_nitr_resume.pdf"
 JOB_DESCRIPTION_PDF_PATH = "jd2.pdf"
 
 # Logging setup
