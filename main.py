@@ -12,18 +12,15 @@ from langchain import hub
 from typing import List, Dict
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
-
-
+from flask import Flask, request, jsonify
 
 # Load environment variables
 load_dotenv()
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-# paths
-PDF_PATH = "kunal_nitr_resume.pdf"
-JOB_DESCRIPTION_PDF_PATH = "jd2.pdf"
+#flask app setup
+app = Flask(__name__)
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +44,9 @@ llama_llm = HuggingFaceEndpoint(
 #initialize youtube api
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
+#load react template from langchain hub
+prompt_template = hub.pull("hwchase17/react")
+
 def extract_json_from_text(text: str) -> Dict:
     """Extract and parse JSON from a text string safely."""
     try:
@@ -61,19 +61,15 @@ def extract_json_from_text(text: str) -> Dict:
     return {}
 
 
-def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract text from a PDF using PyMuPDF."""
-    # Check if file exists before processing 
-    if not os.path.exists(pdf_path):
-        logging.error(f"File not found: {pdf_path}")
-        return ""
+def extract_text_from_pdf(pdf_stream):
+    """Extract text from a PDF file stream using PyMuPDF."""
     try:
-        with fitz.open(pdf_path) as doc:
-            text = "\n".join(page.get_text("text") for page in doc)
+        doc = fitz.open(stream=pdf_stream, filetype="pdf")
+        text = "\n".join(page.get_text("text") for page in doc)
         return text
     except Exception as e:
-        logging.error(f"Error extracting text from {pdf_path}: {e}")
-        return "" 
+        logging.error(f"Error extracting text from PDF stream: {e}")
+        return ""
 
 
 def combine_text(resume_text: str, job_description_text: str) -> str:
@@ -195,41 +191,50 @@ def create_tools(combined_text: str) -> list:
         ),
     ]
 
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    if request.method == 'POST':
+        if 'resume' not in request.files or 'jd' not in request.files:
+            return jsonify({"error": "Both resume and job description PDFs are required"}), 400
+        resume_file = request.files['resume']
+        jd_file = request.files['jd']
 
-def main():
-    """Main function to run the AI agent."""
-    try:
-        resume_text = extract_text_from_pdf(PDF_PATH)
-        job_description_text = extract_text_from_pdf(JOB_DESCRIPTION_PDF_PATH)
-        combined_text = combine_text(resume_text, job_description_text)
+        if resume_file.filename == '' or jd_file.filename == '':
+            return jsonify({"error": "Files must have valid names"}), 400
 
-        tools = create_tools(combined_text)
+        try:
+            resume_text = extract_text_from_pdf(resume_file.read())
+            job_description_text = extract_text_from_pdf(jd_file.read())
 
-        #load react template from langchain hub
-        prompt_template = hub.pull("hwchase17/react")
+            combined_text = combine_text(resume_text, job_description_text)
+            tools = create_tools(combined_text)
 
-        react_agent = create_react_agent(llm=llama_llm, tools=tools, prompt=prompt_template)
-        agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True, return_intermediate_steps=True)
+            react_agent = create_react_agent(llm=llama_llm, tools=tools, prompt=prompt_template)
+            agent_executor = AgentExecutor(agent=react_agent, tools=tools, verbose=True, return_intermediate_steps=True)
 
-        query = (
-            "You are an AI assistant that evaluates resumes based on job descriptions. "
-            "Use the analyze_resume tool to analyze the combined resume and job description text, "
-            "and search YouTube for relevant resources using the search_youtube_videos tool. "
-            "Provide short descriptions of the improvement areas as the final answer."
-        )
+            query = (
+                "You are an AI assistant that evaluates resumes based on job descriptions. "
+                "Use the analyze_resume tool to analyze the combined resume and job description text, "
+                "and search YouTube for relevant resources using the search_youtube_videos tool. "
+                "Provide short descriptions of the improvement areas as the final answer."
+            )
 
-        response = agent_executor.invoke({"input": query})
-        intermediate_steps = response["intermediate_steps"]
+            response = agent_executor.invoke({"input": query})
+            intermediate_steps = response["intermediate_steps"]
 
-        improvement_areas = intermediate_steps[0][1]
-        youtube_links = intermediate_steps[1][1]
+            improvement_areas = intermediate_steps[0][1]
+            youtube_links = intermediate_steps[1][1]
 
-        print("\nIMPROVEMENT AREAS:\n", improvement_areas)
-        print("\nYOUTUBE LINKS:\n", youtube_links)
+            return jsonify({
+                "improvement_areas": improvement_areas,
+                "youtube_links": youtube_links
+            })
 
-    except Exception as e:
-        logging.error("An error occurred: %s", str(e))
-
+        except Exception as e:
+            logger.error(f"Error during analysis: {e}")
+            return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
+
